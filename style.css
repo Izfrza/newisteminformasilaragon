@@ -1,0 +1,10 @@
+.fa-threads {
+    color: #000000; /* Warna default Threads */
+}
+
+/* Hover effect */
+.social-links a:hover .fa-threads {
+    color: #000000;
+    transform: scale(1.1);
+    transition: all 0.3s ease;
+}
