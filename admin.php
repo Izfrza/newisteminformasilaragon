@@ -188,66 +188,120 @@ switch ($action) {
         $stmt->execute([':id' => $id]);
         $message = "Foto galeri berhasil dihapus!";
         break;
-// Di bagian case 'add_admin'
 case 'add_admin':
-    if ($_POST && $admin['role'] === 'superadmin') {
-        $username = $_POST['username'];
-        $fullname = $_POST['fullname'];
-        $phone = $_POST['phone'];
-        $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-        $role = $_POST['role'];
-        
-        $query = "INSERT INTO admins (username, password, fullname, phone, role) 
-                 VALUES (:username, :password, :fullname, :phone, :role)";
-        $stmt = $db->prepare($query);
-        $stmt->execute([
-            ':username' => $username,
-            ':password' => $password,
-            ':fullname' => $fullname,
-            ':phone' => $phone,
-            ':role' => $role
-        ]);
-        $message = "Admin berhasil ditambahkan!";
-    }
-    break;
-
-// Di bagian case 'edit_admin'
-case 'edit_admin':
-    if ($_POST && $admin['role'] === 'superadmin') {
-        $id = $_POST['id'];
-        $username = $_POST['username'];
-        $fullname = $_POST['fullname'];
-        $phone = $_POST['phone'];
-        $role = $_POST['role'];
-        
-        if (!empty($_POST['password'])) {
-            $hashed_password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-            $query = "UPDATE admins SET username = :username, fullname = :fullname, 
-                     phone = :phone, password = :password, role = :role WHERE id = :id";
-            $stmt = $db->prepare($query);
-            $stmt->execute([
-                ':username' => $username,
-                ':fullname' => $fullname,
-                ':phone' => $phone,
-                ':password' => $hashed_password,
-                ':role' => $role,
-                ':id' => $id
-            ]);
-        } else {
-            $query = "UPDATE admins SET username = :username, fullname = :fullname, 
-                     phone = :phone, role = :role WHERE id = :id";
-            $stmt = $db->prepare($query);
-            $stmt->execute([
-                ':username' => $username,
-                ':fullname' => $fullname,
-                ':phone' => $phone,
-                ':role' => $role,
-                ':id' => $id
-            ]);
+        if ($_POST && $admin['role'] === 'superadmin') {
+            $username = trim($_POST['username']);
+            $fullname = trim($_POST['fullname']);
+            $phone = trim($_POST['phone']);
+            $password = $_POST['password'];
+            $role = $_POST['role'];
+            
+            // Validasi input
+            if (empty($username) || empty($fullname) || empty($phone) || empty($password)) {
+                $error = "Semua field harus diisi!";
+            } elseif (strlen($password) < 6) {
+                $error = "Password minimal 6 karakter!";
+            } elseif (!preg_match('/^\+62[0-9]{9,13}$/', $phone)) {
+                $error = "Format nomor HP tidak valid! Gunakan format: +628123456789";
+            } else {
+                // Cek apakah username sudah ada
+                $check_query = "SELECT COUNT(*) FROM admins WHERE username = :username";
+                $check_stmt = $db->prepare($check_query);
+                $check_stmt->execute([':username' => $username]);
+                $username_exists = $check_stmt->fetchColumn();
+                
+                if ($username_exists > 0) {
+                    $error = "Username '$username' sudah digunakan. Silakan pilih username lain.";
+                } else {
+                    try {
+                        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                        $query = "INSERT INTO admins (username, password, fullname, phone, role) 
+                                 VALUES (:username, :password, :fullname, :phone, :role)";
+                        $stmt = $db->prepare($query);
+                        $stmt->execute([
+                            ':username' => $username,
+                            ':password' => $hashed_password,
+                            ':fullname' => $fullname,
+                            ':phone' => $phone,
+                            ':role' => $role
+                        ]);
+                        $message = "Admin berhasil ditambahkan!";
+                    } catch (PDOException $e) {
+                        if ($e->getCode() == 23000) {
+                            $error = "Username '$username' sudah digunakan. Silakan pilih username lain.";
+                        } else {
+                            $error = "Terjadi kesalahan database: " . $e->getMessage();
+                        }
+                    }
+                }
+            }
         }
-        $message = "Data admin berhasil diupdate!";
-    }
-    break;
+        break;
+
+    case 'edit_admin':
+        if ($_POST && $admin['role'] === 'superadmin') {
+            $id = $_POST['id'];
+            $username = trim($_POST['username']);
+            $fullname = trim($_POST['fullname']);
+            $phone = trim($_POST['phone']);
+            $role = $_POST['role'];
+            
+            // Cek apakah username sudah digunakan oleh admin lain
+            $check_query = "SELECT COUNT(*) FROM admins WHERE username = :username AND id != :id";
+            $check_stmt = $db->prepare($check_query);
+            $check_stmt->execute([':username' => $username, ':id' => $id]);
+            $username_exists = $check_stmt->fetchColumn();
+            
+            if ($username_exists > 0) {
+                $error = "Username '$username' sudah digunakan oleh admin lain. Silakan pilih username lain.";
+            } else {
+                try {
+                    if (!empty($_POST['password'])) {
+                        $hashed_password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+                        $query = "UPDATE admins SET username = :username, fullname = :fullname, 
+                                 phone = :phone, password = :password, role = :role WHERE id = :id";
+                        $stmt = $db->prepare($query);
+                        $stmt->execute([
+                            ':username' => $username,
+                            ':fullname' => $fullname,
+                            ':phone' => $phone,
+                            ':password' => $hashed_password,
+                            ':role' => $role,
+                            ':id' => $id
+                        ]);
+                    } else {
+                        $query = "UPDATE admins SET username = :username, fullname = :fullname, 
+                                 phone = :phone, role = :role WHERE id = :id";
+                        $stmt = $db->prepare($query);
+                        $stmt->execute([
+                            ':username' => $username,
+                            ':fullname' => $fullname,
+                            ':phone' => $phone,
+                            ':role' => $role,
+                            ':id' => $id
+                        ]);
+                    }
+                    $message = "Data admin berhasil diupdate!";
+                } catch (PDOException $e) {
+                    if ($e->getCode() == 23000) {
+                        $error = "Username '$username' sudah digunakan. Silakan pilih username lain.";
+                    } else {
+                        $error = "Terjadi kesalahan: " . $e->getMessage();
+                    }
+                }
+            }
+        }
+        break;
+
+    case 'delete_admin':
+        if ($admin['role'] === 'superadmin') {
+            $id = $_GET['id'];
+            $query = "DELETE FROM admins WHERE id = :id AND username != 'superadmin'";
+            $stmt = $db->prepare($query);
+            $stmt->execute([':id' => $id]);
+            $message = "Admin berhasil dihapus!";
+        }
+        break;
 
     case 'search_news':
         $search_term = '%' . $_POST['search'] . '%';
@@ -836,6 +890,7 @@ if (isset($_GET['logout'])) {
                         </div>
                     </div>
 
+                   
                     <!-- Admins Tab (Super Admin Only) -->
                     <?php if ($admin['role'] === 'superadmin'): ?>
                     <div class="tab-pane fade" id="admins">
@@ -871,42 +926,42 @@ if (isset($_GET['logout'])) {
                         <div class="card">
                             <div class="card-body">
                                 <div class="table-responsive">
-                                   <!-- Di bagian tabel admins -->
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>#</th>
-            <th>Username</th>
-            <th>Nama Lengkap</th>
-            <th>Nomor HP</th>
-            <th>Role</th>
-            <th>Aksi</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php foreach ($admins as $index => $admin_item): ?>
-        <tr>
-            <td><?php echo $index + 1; ?></td>
-            <td><?php echo htmlspecialchars($admin_item['username']); ?></td>
-            <td><?php echo htmlspecialchars($admin_item['fullname']); ?></td>
-            <td><?php echo htmlspecialchars($admin_item['phone']); ?></td>
-            <td>
-                <span class="badge bg-<?php echo $admin_item['role'] === 'superadmin' ? 'warning' : 'info'; ?>">
-                    <?php echo ucfirst($admin_item['role']); ?>
-                </span>
-            </td>
-            <td>
-                <?php if ($admin_item['username'] !== 'superadmin'): ?>
-                <a href="?action=delete_admin&id=<?php echo $admin_item['id']; ?>" 
-                   class="btn btn-sm btn-danger" 
-                   onclick="return confirm('Yakin ingin menghapus admin ini?')">
-                    <i class="fas fa-trash"></i>
-                </a>
-                <?php else: ?>
-                <span class="text-muted">Protected</span>
-                <?php endif; ?>
-            </td>
-        </tr>
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Username</th>
+                                                <th>Nama Lengkap</th>
+                                                <th>Nomor HP</th>
+                                                <th>Role</th>
+                                                <th>Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($admins as $index => $admin_item): ?>
+                                            <tr>
+                                                <td><?php echo $index + 1; ?></td>
+                                                <td><?php echo htmlspecialchars($admin_item['username']); ?></td>
+                                                <td><?php echo htmlspecialchars($admin_item['fullname']); ?></td>
+                                                <td><?php echo htmlspecialchars($admin_item['phone'] ?? '-'); ?></td>
+                                                <td>
+                                                    <span class="badge bg-<?php echo $admin_item['role'] === 'superadmin' ? 'warning' : 'info'; ?>">
+                                                        <?php echo ucfirst($admin_item['role']); ?>
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <?php if ($admin_item['username'] !== 'superadmin'): ?>
+                                                    <a href="?action=delete_admin&id=<?php echo $admin_item['id']; ?>" 
+                                                       class="btn btn-sm btn-danger" 
+                                                       onclick="return confirm('Yakin ingin menghapus admin ini?')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                    <?php else: ?>
+                                                    <span class="text-muted">Protected</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                            </tr>
+
         <?php endforeach; ?>
     </tbody>
 </table>
@@ -1023,56 +1078,49 @@ if (isset($_GET['logout'])) {
             </div>
         </div>
     </div>
-
+ <!-- Modals -->
     <!-- Add Admin Modal -->
     <?php if ($admin['role'] === 'superadmin'): ?>
     <div class="modal fade" id="addAdminModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-               <!-- Add Admin Modal -->
-<div class="modal fade" id="addAdminModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Tambah Administrator</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="?action=add_admin">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="adminUsername" class="form-label">Username</label>
-                        <input type="text" class="form-control" id="adminUsername" name="username" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="adminFullname" class="form-label">Nama Lengkap</label>
-                        <input type="text" class="form-control" id="adminFullname" name="fullname" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="adminPhone" class="form-label">Nomor HP</label>
-                        <input type="tel" class="form-control" id="adminPhone" name="phone" required 
-                               pattern="\+62[0-9]{9,13}" placeholder="+628123456789">
-                        <small class="text-muted">Format: +62xxxxxxxxxx</small>
-                    </div>
-                    <div class="mb-3">
-                        <label for="adminPassword" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="adminPassword" name="password" required minlength="6">
-                    </div>
-                    <div class="mb-3">
-                        <label for="adminRole" class="form-label">Role</label>
-                        <select class="form-select" id="adminRole" name="role" required>
-                            <option value="admin">Admin</option>
-                            <option value="superadmin">Super Admin</option>
-                        </select>
-                    </div>
+                <div class="modal-header">
+                    <h5 class="modal-title">Tambah Administrator</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">Simpan</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+                <form method="POST" action="?action=add_admin" id="addAdminForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="adminUsername" class="form-label">Username *</label>
+                            <input type="text" class="form-control" id="adminUsername" name="username" required
+                                   placeholder="Masukkan username unik">
+                            <div class="form-text">Username harus unik dan belum digunakan</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="adminFullname" class="form-label">Nama Lengkap *</label>
+                            <input type="text" class="form-control" id="adminFullname" name="fullname" required
+                                   placeholder="Masukkan nama lengkap">
+                        </div>
+                        <div class="mb-3">
+                            <label for="adminPhone" class="form-label">Nomor HP *</label>
+                            <input type="tel" class="form-control" id="adminPhone" name="phone" required 
+                                   pattern="\+62[0-9]{9,13}" placeholder="+628123456789">
+                            <small class="text-muted">Format: +62xxxxxxxxxx</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="adminPassword" class="form-label">Password *</label>
+                            <input type="password" class="form-control" id="adminPassword" name="password" required minlength="6"
+                                   placeholder="Minimal 6 karakter">
+                        </div>
+                        <div class="mb-3">
+                            <label for="adminRole" class="form-label">Role *</label>
+                            <select class="form-select" id="adminRole" name="role" required>
+                                <option value="">Pilih Role</option>
+                                <option value="admin">Admin</option>
+                                <option value="superadmin">Super Admin</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                         <button type="submit" class="btn btn-primary">Simpan</button>
@@ -1081,33 +1129,50 @@ if (isset($_GET['logout'])) {
             </div>
         </div>
     </div>
-    <!-- Modal Reset Password -->
-<div class="modal fade" id="resetPasswordModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Reset Password</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Untuk reset password admin:</p>
-                <ol>
-                    <li>Kunjungi halaman: <a href="forgot_password.php" target="_blank">Lupa Password</a></li>
-                    <li>Masukkan username admin (admin/superadmin)</li>
-                    <li>Check file <code>email_logs/reset_password_emails.txt</code></li>
-                    <li>Copy link reset dan buka di browser</li>
-                    <li>Input password baru</li>
-                </ol>
-                <div class="text-center mt-3">
-                    <a href="forgot_password.php" class="btn btn-primary" target="_blank">
-                        <i class="fas fa-key me-2"></i>Reset Password Sekarang
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
     <?php endif; ?>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set today's date as default for date inputs
+            const newsDate = document.getElementById('newsDate');
+            const galleryDate = document.getElementById('galleryDate');
+            
+            if (newsDate) newsDate.valueAsDate = new Date();
+            if (galleryDate) galleryDate.valueAsDate = new Date();
+            
+            // Handle tab navigation
+            const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove active class from all buttons
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    // Add active class to clicked button
+                    this.classList.add('active');
+                });
+            });
+
+            // Reset form modal ketika ditutup
+            const addAdminModal = document.getElementById('addAdminModal');
+            if (addAdminModal) {
+                addAdminModal.addEventListener('hidden.bs.modal', function () {
+                    document.getElementById('addAdminForm').reset();
+                });
+            }
+        });
+
+        // Validasi username unik sebelum submit
+        document.getElementById('addAdminForm')?.addEventListener('submit', function(e) {
+            const username = document.getElementById('adminUsername').value;
+            if (username === 'admin' || username === 'superadmin') {
+                e.preventDefault();
+                alert('Username "' + username + '" sudah digunakan. Silakan pilih username lain.');
+                return false;
+            }
+        });
+    </script>
+    
+  
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
