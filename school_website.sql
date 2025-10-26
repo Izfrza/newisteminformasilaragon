@@ -61,7 +61,7 @@ CREATE TABLE teachers (
 
 -- Insert data default
 INSERT INTO school_settings (name, address, phone, email, vision, mission, total_students, hero_background, section_background) VALUES
-('SMA Negeri 1 Maju Jaya', 'Jl. Pendidikan No. 123, Kelurahan Maju Jaya, Kecamatan Cerdas, Kota Pintar', '(021) 1234-5678', 'info@sman1majujaya.sch.id', 'Menjadi sekolah unggulan yang menghasilkan lulusan berkarakter, berprestasi, dan mampu bersaing di era global.', 'Menyelenggarakan pendidikan yang berkualitas dan berkarakter\nMengembangkan potensi peserta didik secara optimal\nMendorong inovasi dalam pembelajaran\nMenjalin kerjasama dengan masyarakat dan dunia usaha', 1250, 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80', '');
+('Mi Tarbiyatul Falah', 'Desa Hambalang Kp. Tajur Tapos', '0895402357182', 'info@sman1majujaya.sch.id', 'Menjadi sekolah unggulan yang menghasilkan lulusan berkarakter, berprestasi, dan mampu bersaing di era global.', 'Menyelenggarakan pendidikan yang berkualitas dan berkarakter\nMengembangkan potensi peserta didik secara optimal\nMendorong inovasi dalam pembelajaran\nMenjalin kerjasama dengan masyarakat dan dunia usaha', 1250, 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80', '');
 
 INSERT INTO admins (username, password, fullname, phone, role) VALUES
 ('superadmin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Super Administrator', '+628123456789', 'superadmin'),
@@ -75,4 +75,5 @@ INSERT INTO gallery (title, image, date) VALUES
 
 INSERT INTO teachers (name, subject) VALUES
 ('Dr. Budi Santoso, M.Pd.', 'Kepala Sekolah'),
+
 ('Ibu Rita Wati, S.Si.', 'Kimia');
